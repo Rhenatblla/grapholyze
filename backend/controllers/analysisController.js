@@ -2,6 +2,7 @@ const analysisService = require("../services/analysisService");
 const PDFDocument = require("pdfkit");
 const fs = require("fs");
 const path = require("path");
+const mongoose = require("mongoose");
 
 // @route   POST /api/analysis/upload
 // @desc    Upload dan analyze image
@@ -180,13 +181,24 @@ exports.getAnalysis = async (req, res) => {
 exports.getUserHistory = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { page = 1, limit = 10 } = req.query;
 
-    const history = await analysisService.getUserAnalysisHistory(userId, parseInt(page), parseInt(limit));
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 50);
 
-    res.status(200).json(history);
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({
+        message: "Invalid user ID",
+      });
+    }
+
+    const history = await analysisService.getUserAnalysisHistory(userId, page, limit);
+
+    return res.status(200).json(history);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("[Get User History Error]", error);
+    return res.status(500).json({
+      message: error.message || "Failed to get analysis history",
+    });
   }
 };
 
