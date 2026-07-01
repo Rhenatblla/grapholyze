@@ -1,24 +1,17 @@
-const express = require('express');
+const express = require("express");
+
+const authController = require("../controllers/authController");
+const authMiddleware = require("../middleware/authMiddleware");
+
+console.log("AUTH CONTROLLER:", authController);
+console.log("AUTH MIDDLEWARE:", authMiddleware);
+
 const router = express.Router();
-const {
-    registerUser,
-    loginUser,
-    getMe,
-    updateUserProfile,
-    changePassword
-} = require('../controllers/authController');
-const { protect } = require('../middleware/authMiddleware');
 
-// Middleware upload yang baru kita buat di atas
-const upload = require('../middleware/uploadMiddleware');
-
-router.post('/register', registerUser);
-router.post('/login', loginUser);
-router.get('/me', protect, getMe);
-
-// ✅ Route ini sekarang sudah siap menerima file gambar
-router.put('/profile', protect, upload.single('profilePicture'), updateUserProfile);
-
-router.post('/change-password', protect, changePassword);
+router.post("/register", authController.registerUser);
+router.post("/login", authController.loginUser);
+router.get("/me", authMiddleware.protect, authController.getMe);
+router.put("/profile", authMiddleware.protect, authController.updateUserProfile);
+router.post("/change-password", authMiddleware.protect, authController.changePassword);
 
 module.exports = router;
