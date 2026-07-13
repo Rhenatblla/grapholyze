@@ -249,12 +249,12 @@ export function detectPaperQuad(gray, pw, ph, box, cfg) {
   const centered = Math.abs(best.cx - fcx) / box.w < cfg.centerTol && Math.abs(best.cy - fcy) / box.h < cfg.centerTol;
   const fill = qArea / (box.w * box.h);
   const tooSmall = fill < cfg.fillMin; // kertas terlalu kecil di bingkai -> MAJU
-  // terlalu besar / terlalu dekat -> MUNDUR (tidak lagi dipicu oleh !inFrame)
+  // terlalu besar/terlalu dekat ATAU ada sudut keluar bingkai (terpotong) -> MUNDUR
   const tooBig = fill > cfg.fillMax;
   const filled = !tooSmall && !tooBig;
   const solidOk = solidity >= cfg.solidityMin;
 
-  // "centered" & "inFrame" tidak lagi jadi syarat -> lebih mudah diarahkan
+  // "centered" & "inFrame" tidak lagi syarat terpisah -> lebih mudah diarahkan
   const ok = filled && straight && solidOk;
   return {
     ok,

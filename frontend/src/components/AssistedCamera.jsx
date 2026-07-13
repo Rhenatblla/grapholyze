@@ -24,7 +24,7 @@ import styles from "./AssistedCamera.module.css";
 
 const MAX_OUT_DIM = 2400; // batas dimensi hasil crop (jaga ketajaman)
 
-export default function AssistedCamera({ onCapture, onBack, config, stableFrames = 3, intervalMs = 130, captureQuality = 0.98 }) {
+export default function AssistedCamera({ onCapture, config, stableFrames = 3, intervalMs = 130, captureQuality = 0.98 }) {
   const cfg = { ...DEFAULT_CONFIG, ...config };
 
   const videoRef = useRef(null);
@@ -198,8 +198,6 @@ export default function AssistedCamera({ onCapture, onBack, config, stableFrames
       }
 
       lastResultRef.current = res;
-      setResult(res);
-      drawOverlay(res);
 
       // Histeresis tombol capture: butuh beberapa frame "mantap" untuk AKTIF, dan
       // baru NONAKTIF setelah beberapa frame buruk berturut-turut. Mencegah tombol
@@ -207,7 +205,14 @@ export default function AssistedCamera({ onCapture, onBack, config, stableFrames
       const steady = res.allOK && !moving;
       if (steady) stableRef.current = Math.min(stableFrames + 4, stableRef.current + 1);
       else stableRef.current = Math.max(0, stableRef.current - 1);
-      setCanCapture(stableRef.current >= stableFrames);
+      const ready = stableRef.current >= stableFrames;
+
+      // Semua kondisi sudah OK tapi sistem masih memastikan kestabilan -> tahan sebentar.
+      if (res.allOK && !ready) res.message = "Tahan posisi sebentar…";
+
+      setResult(res);
+      drawOverlay(res);
+      setCanCapture(ready);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [intervalMs, stableFrames, drawOverlay],
@@ -405,19 +410,14 @@ export default function AssistedCamera({ onCapture, onBack, config, stableFrames
         </>
       )}
 
-      <>
-        {/*tombol pojok kiri atas*/}
-        {onBack && (
-          <button onClick={onBack} type="button" className="absolute top-4 left-4 z-10 text-white p-2">
-            ←
-          </button>
-        )}
-      </>
-
       {(status.kind === "idle" || status.kind === "starting" || status.kind === "error") && (
         <div className={styles.start}>
           <span className={styles.badge}>Grapholyze</span>
           <h1>Assisted Camera</h1>
+          <p>
+            Memandu pengambilan gambar tulisan tangan: deteksi posisi 4-sudut kertas, cahaya (luminance ITU-R BT.601), dan blur (variansi Laplacian). Saat optimal, tombol ambil gambar muncul dan hasilnya otomatis dipotong, diluruskan &
+            dipertajam seperti scan.
+          </p>
           <button onClick={startCamera} disabled={status.kind === "starting"} type="button">
             {status.kind === "starting" ? "Memulai…" : "Aktifkan Kamera"}
           </button>

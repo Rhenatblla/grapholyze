@@ -17,7 +17,7 @@ export const DEFAULT_CONFIG = {
   solidityMin: 0.5, // luas kertas / luas quad (memastikan bentuk kertas utuh)
   edgeMarginFrac: 0.03, // jarak minimum sudut kertas dari tepi frame
   searchMarginFrac: 0.28, // batasi segmentasi ke sekitar kotak panduan (anti bocor ke latar terang)
-  centerTol: 0.16, // hanya untuk info, tidak menentukan "optimal"
+  centerTol: 0.18, // hanya untuk info, tidak menentukan "optimal"
   motionMax: 9, // rata-rata selisih antar-frame maksimum sebelum dianggap goyang
 
   // Algoritma kemiringan via Sobel + histogram orientasi tepi (umpan balik "luruskan").
