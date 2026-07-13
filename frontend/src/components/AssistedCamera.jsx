@@ -24,7 +24,7 @@ import styles from "./AssistedCamera.module.css";
 
 const MAX_OUT_DIM = 2400; // batas dimensi hasil crop (jaga ketajaman)
 
-export default function AssistedCamera({ onCapture, config, stableFrames = 3, intervalMs = 130, captureQuality = 0.98 }) {
+export default function AssistedCamera({ onCapture, onBack, config, stableFrames = 3, intervalMs = 130, captureQuality = 0.98 }) {
   const cfg = { ...DEFAULT_CONFIG, ...config };
 
   const videoRef = useRef(null);
@@ -405,14 +405,19 @@ export default function AssistedCamera({ onCapture, config, stableFrames = 3, in
         </>
       )}
 
+      <>
+        {/*tombol pojok kiri atas*/}
+        {onBack && (
+          <button onClick={onBack} type="button" className="absolute top-4 left-4 z-10 text-white p-2">
+            ←
+          </button>
+        )}
+      </>
+
       {(status.kind === "idle" || status.kind === "starting" || status.kind === "error") && (
         <div className={styles.start}>
           <span className={styles.badge}>Grapholyze</span>
           <h1>Assisted Camera</h1>
-          <p>
-            Memandu pengambilan gambar tulisan tangan: deteksi posisi 4-sudut kertas, cahaya (luminance ITU-R BT.601), dan blur (variansi Laplacian). Saat optimal, tombol ambil gambar muncul dan hasilnya otomatis dipotong, diluruskan &
-            dipertajam seperti scan.
-          </p>
           <button onClick={startCamera} disabled={status.kind === "starting"} type="button">
             {status.kind === "starting" ? "Memulai…" : "Aktifkan Kamera"}
           </button>

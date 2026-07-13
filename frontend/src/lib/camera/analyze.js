@@ -11,17 +11,42 @@ import { analyzeBlur } from "./blur";
 import { computeTargetBox, detectPaperQuad, bboxFromCorners } from "./position";
 import { measureRotation, classifyRotation } from "./rotation";
 
-/** Bangun pesan panduan dari hasil deteksi (posisi -> cahaya -> ketajaman). */
+/** Bangun pesan panduan real-time (prioritas: deteksi -> jarak -> posisi -> kemiringan -> cahaya -> fokus). */
 export function buildMessage(pos, light, blur, cfg) {
-  if (!pos.found) return "Letakkan kertas di dalam bingkai";
-  if (pos.tooSmall) return "Maju / dekatkan kamera — kertas terlalu kecil";
-  if (pos.tooBig) return pos.inFrame ? "Mundur sedikit — kertas terlalu dekat" : "Mundur sedikit — kertas terpotong bingkai";
-  if (pos.solidity != null && pos.solidity < cfg.solidityMin) return "Pastikan seluruh kertas terlihat & rata";
-  if (!pos.straight) return "Luruskan kertas (masih miring)";
-  if (light.brightnessOk === false) return light.mean < cfg.light.min ? "Kurang cahaya — tambah pencahayaan" : "Terlalu terang / silau";
-  if (light.shadow) return "Ada bayangan di kertas — ratakan pencahayaan";
-  if (!blur.ok) return "Gambar buram — tahan kamera lebih stabil";
-  return "Sempurna! Tahan posisi & ambil gambar";
+  // 1) Dokumen belum terdeteksi / belum utuh
+  if (!pos.found || (pos.solidity != null && pos.solidity < cfg.solidityMin)) return "Dokumen belum terdeteksi — Arahkan kamera ke seluruh halaman.";
+
+  // 2) Jarak kamera
+  if (pos.tooSmall) return "Dokumen terlalu jauh — Dekatkan kamera.";
+  if (pos.tooBig) return "Dokumen terlalu dekat — Jauhkan kamera.";
+
+  // 3) Posisi terhadap tengah bingkai (pilih penyimpangan terbesar)
+  if (!pos.centered && pos.offsetX != null && pos.offsetY != null) {
+    if (Math.abs(pos.offsetX) >= Math.abs(pos.offsetY)) {
+      return pos.offsetX > 0 ? "Dokumen terlalu ke kanan — Arahkan kamera sedikit ke kanan." : "Dokumen terlalu ke kiri — Arahkan kamera sedikit ke kiri.";
+    }
+    return pos.offsetY > 0 ? "Dokumen terlalu ke bawah — Arahkan kamera sedikit ke bawah." : "Dokumen terlalu ke atas — Arahkan kamera sedikit ke atas.";
+  }
+
+  // 4) Kemiringan (dengan arah bila sudut diketahui)
+  if (!pos.straight) {
+    if (pos.skew != null && Math.abs(pos.skew) > cfg.skewMaxDeg) {
+      // Konvensi arah: skew > 0 -> putar ke kanan. Bila saat uji terasa terbalik,
+      // cukup tukar string 'kanan' <-> 'kiri' pada dua baris di bawah ini.
+      return pos.skew > 0 ? "Dokumen miring — Putar ponsel sedikit ke kanan." : "Dokumen miring — Putar ponsel sedikit ke kiri.";
+    }
+    return "Dokumen masih miring — Luruskan dengan bingkai panduan.";
+  }
+
+  // 5) Pencahayaan
+  if (light.brightnessOk === false) return light.mean < cfg.light.min ? "Pencahayaan kurang — Tambahkan cahaya pada dokumen." : "Terlalu terang — Kurangi cahaya dan hindari pantulan.";
+  if (light.shadow) return "Pencahayaan belum merata — Hindari bayangan pada dokumen.";
+
+  // 6) Fokus / ketajaman
+  if (!blur.ok) return "Gambar belum tajam — Stabilkan kamera dan tunggu hingga fokus.";
+
+  // 7) Semua kondisi sesuai
+  return "Siap dianalisis — Pertahankan posisi lalu tekan Capture.";
 }
 
 /** Analisis satu frame ImageData (berukuran proc). */
@@ -72,6 +97,16 @@ export function analyzeFrame(imageData, cfg = DEFAULT_CONFIG, state) {
     position.skew = angle;
     const solidOk = position.solidity != null && position.solidity >= cfg.solidityMin;
     position.ok = position.filled && position.straight && solidOk;
+  }
+
+  // Arah posisi kertas terhadap pusat kotak panduan -> feedback kiri/kanan/atas/bawah.
+  if (position.found && position.centroid) {
+    const cx = targetBox.x + targetBox.w / 2;
+    const cy = targetBox.y + targetBox.h / 2;
+    position.offsetX = (position.centroid.x - cx) / targetBox.w; // + = kertas condong ke KANAN
+    position.offsetY = (position.centroid.y - cy) / targetBox.h; // + = kertas condong ke BAWAH
+    // "centered" kini ikut menentukan kesiapan (spesifikasi: posisi harus sesuai).
+    position.ok = position.ok && position.centered;
   }
 
   const allOK = position.ok && light.ok && blur.ok;

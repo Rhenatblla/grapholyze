@@ -21,7 +21,7 @@
 
 // Nilai default bila cfg.rotation tidak diisi (mis. config lama).
 const ROT_DEFAULT = {
-  maxAngleDeg: 12,
+  maxAngleDeg: 3,
   angleStepDeg: 1,
   edgeMagnitudeThreshold: 80,
   downsample: 150,
