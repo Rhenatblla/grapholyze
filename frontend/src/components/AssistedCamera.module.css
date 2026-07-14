@@ -2,10 +2,7 @@
   position: relative;
   width: 100%;
   height: 100%;
-  height: 560px;
-  min-height: 0;
-  max-height: 75vh;
-  border-radius: 24px;
+  min-height: 100dvh;
   background: #000;
   color: #fff;
   overflow: hidden;
@@ -142,6 +139,16 @@
   opacity: 1;
   transform: scale(1);
   pointer-events: auto;
+}
+/* Tombol TERLIHAT tapi non-aktif (redup) sampai semua kondisi optimal. */
+.capture:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  border-color: #cbd5e1;
+  background: #cbd5e1;
+  box-shadow: none;
+}
+.captureReady {
   box-shadow: 0 0 24px 4px rgba(22, 163, 74, 0.6);
 }
 .capture:active {
@@ -152,6 +159,10 @@
   position: absolute;
   inset: 6px;
   border-radius: 50%;
+  background: #e5e7eb;
+  transition: background 0.2s;
+}
+.captureReady::after {
   background: #16a34a;
 }
 .gbtn {
@@ -217,4 +228,56 @@
   color: #fca5a5;
   font-size: 13px;
   max-width: 460px;
+}
+
+/* Focus / blur feedback */
+.focusWrap {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(env(safe-area-inset-bottom, 16px) + 168px);
+  z-index: 7;
+  width: min(88vw, 360px);
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  padding: 8px 12px 10px;
+}
+.focusRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.focusLabel {
+  color: #fca5a5;
+}
+.focusOk {
+  color: #86efac;
+}
+.focusVal {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.7;
+  font-weight: 500;
+  font-size: 11px;
+}
+.focusBar {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+}
+.focusFill {
+  height: 100%;
+  border-radius: 999px;
+  background: #dc2626;
+  transition:
+    width 0.18s,
+    background 0.25s;
+}
+.focusFillOk {
+  background: #16a34a;
 }

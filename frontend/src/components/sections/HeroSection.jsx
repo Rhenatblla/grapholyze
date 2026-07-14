@@ -74,7 +74,7 @@ export default function HeroSection({ id }) {
 
         {/* RIGHT IMAGE */}
         <div className="flex justify-center">
-          <img src="/graf.jpeg" alt="AI Graphology Illustration" className="w-56 h-56 sm:w-72 sm:h-72 md:w-[420px] md:w-[420px] rounded-2xl object-cover" />
+          <img src="/Graf.jpeg" alt="AI Graphology Illustration" className="w-56 h-56 sm:w-72 sm:h-72 md:w-[420px] md:w-[420px] rounded-2xl object-cover" />
         </div>
       </div>
     </section>

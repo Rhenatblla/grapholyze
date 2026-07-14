@@ -129,6 +129,102 @@ export function measureRotation(gray, pw, ph, box, cfg, corners) {
   const found = strength > 2.5;
   return { angle, found, strength };
 }
+// Estimasi kemiringan via PROFIL PROYEKSI pada tulisan (ink) — lebih andal di
+// mode bingkai tetap. Tepi latar (lipatan sofa/meja) yang sejajar frame bisa
+// "menutupi" kemiringan kertas pada histogram tepi; profil proyeksi pada MASK
+// TINTA (piksel gelap yang DIKELILINGI kertas terang) hanya melihat tulisan.
+// Saat sudut proyeksi = kemiringan sebenarnya, baris-baris teks paling tajam
+// (varians profil maksimum). Kebal latar gelap: piksel sofa tak punya tetangga
+// terang sehingga tidak ikut dihitung.
+export function measureSkew(gray, pw, ph, box, paperLevel, cfg) {
+  const rc = (cfg && cfg.rotation) || ROT_DEFAULT;
+  const x0 = Math.max(1, Math.floor(box.x));
+  const y0 = Math.max(1, Math.floor(box.y));
+  const x1 = Math.min(pw - 2, Math.floor(box.x + box.w) - 1);
+  const y1 = Math.min(ph - 2, Math.floor(box.y + box.h) - 1);
+  const bw = x1 - x0 + 1;
+  const bh = y1 - y0 + 1;
+  if (bw < 8 || bh < 8) return { angle: 0, found: false, strength: 0 };
+
+  const stride = Math.max(1, Math.ceil(Math.max(bw, bh) / (rc.downsample || 150)));
+  const inkThr = Math.max(0, paperLevel - 45); // gelap dibanding kertas = tulisan
+  const brightNb = Math.max(0, paperLevel - 25); // ada kertas terang di sekitar?
+  const nb = Math.max(2, stride * 2); // radius cek tetangga terang
+
+  const cx = (x0 + x1) / 2;
+  const cy = (y0 + y1) / 2;
+  const xs = [];
+  const ys = [];
+  for (let y = y0; y <= y1; y += stride) {
+    const row = y * pw;
+    for (let x = x0; x <= x1; x += stride) {
+      const v = gray[row + x] | 0;
+      if (v > inkThr) continue;
+      const up = gray[Math.max(0, y - nb) * pw + x] | 0;
+      const dn = gray[Math.min(ph - 1, y + nb) * pw + x] | 0;
+      const lf = gray[row + Math.max(0, x - nb)] | 0;
+      const rt = gray[row + Math.min(pw - 1, x + nb)] | 0;
+      if (Math.max(up, dn, lf, rt) < brightNb) continue;
+      xs.push(x - cx);
+      ys.push(y - cy);
+    }
+  }
+  const n = xs.length;
+  if (n < 40) return { angle: 0, found: false, strength: 0 };
+
+  const diag = Math.ceil(Math.sqrt(bw * bw + bh * bh)) + 2;
+  const size = diag * 2 + 1;
+  const proj = new Float64Array(size);
+
+  const scoreAt = (deg) => {
+    proj.fill(0);
+    const rad = (deg * Math.PI) / 180;
+    const s = Math.sin(rad);
+    const c = Math.cos(rad);
+    for (let k = 0; k < n; k++) {
+      let bidx = Math.round(-xs[k] * s + ys[k] * c) + diag;
+      if (bidx < 0) bidx = 0;
+      else if (bidx >= size) bidx = size - 1;
+      proj[bidx] += 1;
+    }
+    let mean = 0;
+    for (let i = 0; i < size; i++) mean += proj[i];
+    mean /= size;
+    let varsum = 0;
+    for (let i = 0; i < size; i++) {
+      const d = proj[i] - mean;
+      varsum += d * d;
+    }
+    return varsum;
+  };
+
+  const maxDeg = 20;
+  let bestAngle = 0;
+  let bestScore = -1;
+  const baseScore = scoreAt(0);
+  for (let deg = -maxDeg; deg <= maxDeg; deg += 1) {
+    const sc = deg === 0 ? baseScore : scoreAt(deg);
+    if (sc > bestScore) {
+      bestScore = sc;
+      bestAngle = deg;
+    }
+  }
+  // haluskan di sekitar puncak (langkah 0.25 derajat)
+  let refined = bestAngle;
+  for (let d = -0.75; d <= 0.75; d += 0.25) {
+    if (d === 0) continue;
+    const sc = scoreAt(bestAngle + d);
+    if (sc > bestScore) {
+      bestScore = sc;
+      refined = bestAngle + d;
+    }
+  }
+
+  // 'found' bila puncak jelas lebih tajam daripada proyeksi lurus (deg = 0).
+  const ratio = baseScore > 0 ? bestScore / baseScore : 1;
+  const found = ratio > 1.08;
+  return { angle: normalizeAngle(refined), found, strength: ratio };
+}
 
 // Klasifikasi sudut terhadap toleransi maxAngleDeg.
 export function classifyRotation(angle, found, cfg) {
